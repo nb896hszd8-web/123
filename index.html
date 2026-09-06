@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1.0,
+               maximum-scale=1.0,
+               user-scalable=no">
+
+<title>Find the Stars ✨</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #02030a;
+    touch-action: none;
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#top {
+    position: fixed;
+    top: max(25px, env(safe-area-inset-top));
+    left: 0;
+    width: 100%;
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+}
+
+#title {
+    font-size: 13px;
+    letter-spacing: 5px;
+    color: rgba(255,255,255,.75);
+    text-shadow: 0 0 15px rgba(190,140,255,.8);
+}
+
+#counter {
+    margin-top: 10px;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: rgba(255,255,255,.45);
+}
+
+#hint {
+    position: fixed;
+    bottom: calc(145px + env(safe-area-inset-bottom));
+    left: 0;
+    width: 100%;
+    text-align: center;
+    color: rgba(255,255,255,.35);
+    font-size: 11px;
+    letter-spacing: 2px;
+    pointer-events: none;
+    z-index: 10;
+    transition: opacity 1s;
+}
+
+/* =====================================================
+   ДЖОЙСТИК
+===================================================== */
+
+#joystick {
+    position: fixed;
+    left: 25px;
+    bottom: calc(25px + env(safe-area-inset-bottom));
+    width: 115px;
+    height: 115px;
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle,
+            rgba(255,255,255,.10),
+            rgba(255,255,255,.025)
+        );
+
+    border: 1px solid rgba(255,255,255,.15);
+
+    box-shadow:
+        inset 0 0 30px rgba(150,100,255,.08),
+        0 0 30px rgba(100,50,200,.08);
+
+    z-index: 20;
+}
+
+#stick {
+    position: absolute;
+
+    width: 54px;
+    height: 54px;
+
+    left: 30px;
+    top: 30px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(
+            circle at 35% 30%,
+            rgba(255,255,255,.7),
+            rgba(180,100,255,.25)
+        );
+
+    border: 1px solid rgba(255,255,255,.25);
+
+    box-shadow:
+        0 0 20px rgba(180,100,255,.35);
+}
+
+/* =====================================================
+   ФИНАЛЬНЫЙ ЭКРАН
+===================================================== */
+
+#final {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+    padding:
+        30px
+        max(30px, env(safe-area-inset-right))
+        30px
+        max(30px, env(safe-area-inset-left));
+
+    background:
+        radial-gradient(
+            circle at center,
+            rgba(55,25,95,.45),
+            rgba(2,3,10,.97) 70%
+        );
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: opacity 2s;
+
+    z-index: 50;
+
+    text-align: center;
+}
+
+#final.show {
+    opacity: 1;
+}
+
+.final-stars {
+    font-size: 30px;
+    letter-spacing: 12px;
+    margin-bottom: 35px;
+
+    animation:
+        floatingStars 3s ease-in-out infinite alternate;
+
+    text-shadow:
+        0 0 10px white,
+        0 0 30px #b46cff,
+        0 0 60px #7134ff;
+}
+
+#finalText {
+    max-width: 390px;
+
+    font-size:
+        clamp(20px, 6vw, 32px);
+
+    line-height: 1.6;
+
+    color: rgba(255,255,255,.92);
+
+    text-shadow:
+        0 0 20px rgba(180,120,255,.5);
+
+    opacity: 0;
+    transform: translateY(20px);
+
+    transition:
+        opacity 2s 1s,
+        transform 2s 1s;
+}
+
+#final.show #finalText {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#beautiful {
+    margin-top: 30px;
+
+    font-size:
+        clamp(28px, 9vw, 52px);
+
+    letter-spacing: 7px;
+
+    color: white;
+
+    text-shadow:
+        0 0 10px white,
+        0 0 30px #c46cff,
+        0 0 70px #7a35ff;
+
+    opacity: 0;
+    transform: scale(.7);
+
+    transition:
+        opacity 2s 3s,
+        transform 2s 3s;
+}
+
+#final.show #beautiful {
+    opacity: 1;
+    transform: scale(1);
+}
+
+@keyframes floatingStars {
+    from {
+        transform: translateY(-5px);
+    }
+
+    to {
+        transform: translateY(8px);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="top">
+    <div id="title">FIND THE STARS</div>
+    <div id="counter">★ 0 / 5</div>
+</div>
+
+<div id="hint">
+    НАЙДИ ВСЕ ЗВЁЗДЫ
+</div>
+
+<div id="joystick">
+    <div id="stick"></div>
+</div>
+
+<div id="final">
+
+    <div class="final-stars">
+        ✦　✦　✦
+    </div>
+
+    <div id="finalText">
+        Ты нашла все звёзды...<br>
+        но так и не поняла,<br>
+        что самая красивая звезда —
+    </div>
+
+    <div id="beautiful">
+        это ты. ✨
+    </div>
+
+</div>
+
+<script>
+
+/* =====================================================
+   CANVAS
+===================================================== */
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let W = 0;
+let H = 0;
+let DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+function resize() {
+
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+
+resize();
+
+window.addEventListener("resize", resize);
+
+
+/* =====================================================
+   МИР
+===================================================== */
+
+const world = {
+    width: 2400,
+    height: 1800
+};
+
+
+/* =====================================================
+   ИГРОК
+===================================================== */
+
+const player = {
+    x: 1200,
+    y: 900,
+    radius: 14,
+    speed: 4
+};
+
+
+/* =====================================================
+   КАМЕРА
+===================================================== */
+
+const camera = {
+    x: 0,
+    y: 0
+};
+
+
+/* =====================================================
+   ЗВЁЗДЫ
+===================================================== */
+
+const stars = [
+
+    {
+        x: 430,
+        y: 390,
+        collected: false
+    },
+
+    {
+        x: 1960,
+        y: 420,
+        collected: false
+    },
+
+    {
+        x: 430,
+        y: 1400,
+        collected: false
+    },
+
+    {
+        x: 1980,
+        y: 1370,
+        collected: false
+    },
+
+    {
+        x: 1200,
+        y: 520,
+        collected: false
+    }
+
+];
+
+let collected = 0;
+
+
+/* =====================================================
+   ЧАСТИЦЫ
+===================================================== */
+
+const particles = [];
+
+function particle(x,y,count=5) {
+
+    for(let i=0;i<count;i++) {
+
+        particles.push({
+
+            x:x,
+            y:y,
+
+            vx:(Math.random()-.5)*2.5,
+            vy:(Math.random()-.5)*2.5,
+
+            life:40+Math.random()*50,
+
+            size:1+Math.random()*2.5
+        });
+    }
+}
+
+
+function updateParticles() {
+
+    for(let i=particles.length-1;i>=0;i--) {
+
+        const p = particles[i];
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        p.vx *= .98;
+        p.vy *= .98;
+
+        p.life--;
+
+        if(p.life <= 0) {
+            particles.splice(i,1);
+        }
+    }
+}
+
+
+/* =====================================================
+   ЗВЁЗДНЫЙ ФОН
+===================================================== */
+
+const backgroundStars = [];
+
+for(let i=0;i<180;i++) {
+
+    backgroundStars.push({
+
+        x:Math.random()*world.width,
+        y:Math.random()*world.height,
+
+        size:.5+Math.random()*1.5,
+
+        alpha:.2+Math.random()*.7,
+
+        speed:.2+Math.random()*.5
+    });
+}
+
+
+/* =====================================================
+   ДЖОЙСТИК
+===================================================== */
+
+const joystick = document.getElementById("joystick");
+const stick = document.getElementById("stick");
+
+let joystickActive = false;
+
+let joyX = 0;
+let joyY = 0;
+
+const maxJoy = 34;
+
+function joystickMove(clientX,clientY) {
+
+    const rect = joystick.getBoundingClientRect();
+
+    const centerX =
+        rect.left + rect.width/2;
+
+    const centerY =
+        rect.top + rect.height/2;
+
+    let dx = clientX-centerX;
+    let dy = clientY-centerY;
+
+    const distance =
+        Math.sqrt(dx*dx+dy*dy);
+
+    if(distance > maxJoy) {
+
+        dx = dx/distance*maxJoy;
+        dy = dy/distance*maxJoy;
+    }
+
+    joyX = dx/maxJoy;
+    joyY = dy/maxJoy;
+
+    stick.style.transform =
+        `translate(${dx}px,${dy}px)`;
+}
+
+
+joystick.addEventListener("touchstart",e => {
+
+    e.preventDefault();
+
+    joystickActive = true;
+
+    const touch = e.touches[0];
+
+    joystickMove(
+        touch.clientX,
+        touch.clientY
+    );
+
+},{passive:false});
+
+
+joystick.addEventListener("touchmove",e => {
+
+    e.preventDefault();
+
+    if(!joystickActive) return;
+
+    const touch = e.touches[0];
+
+    joystickMove(
+        touch.clientX,
+        touch.clientY
+    );
+
+},{passive:false});
+
+
+function joystickEnd() {
+
+    joystickActive = false;
+
+    joyX = 0;
+    joyY = 0;
+
+    stick.style.transform =
+        "translate(0,0)";
+}
+
+
+joystick.addEventListener(
+    "touchend",
+    joystickEnd
+);
+
+joystick.addEventListener(
+    "touchcancel",
+    joystickEnd
+);
+
+
+/* =====================================================
+   ДВИЖЕНИЕ
+===================================================== */
+
+function movePlayer() {
+
+    let dx = joyX;
+    let dy = joyY;
+
+    const speed = player.speed;
+
+    player.x += dx * speed;
+    player.y += dy * speed;
+
+    player.x =
+        Math.max(
+            player.radius,
+            Math.min(
+                world.width-player.radius,
+                player.x
+            )
+        );
+
+    player.y =
+        Math.max(
+            player.radius,
+            Math.min(
+                world.height-player.radius,
+                player.y
+            )
+        );
+
+    if(
+        Math.abs(dx)>.1 ||
+        Math.abs(dy)>.1
+    ) {
+
+        if(Math.random()<.25) {
+
+            particle(
+                player.x,
+                player.y,
+                1
+            );
+        }
+    }
+}
+
+
+/* =====================================================
+   СБОР ЗВЁЗД
+===================================================== */
+
+function checkStars() {
+
+    for(const star of stars) {
+
+        if(star.collected) continue;
+
+        const dx =
+            player.x-star.x;
+
+        const dy =
+            player.y-star.y;
+
+        const distance =
+            Math.sqrt(dx*dx+dy*dy);
+
+        if(distance < 55) {
+
+            star.collected = true;
+
+            collected++;
+
+            particle(
+                star.x,
+                star.y,
+                80
+            );
+
+            document.getElementById(
+                "counter"
+            ).textContent =
+                `★ ${collected} / 5`;
+
+            if(collected === 5) {
+
+                document.getElementById(
+                    "hint"
+                ).style.opacity = "0";
+
+                setTimeout(
+                    finish,
+                    1000
+                );
+            }
+        }
+    }
+}
+
+
+/* =====================================================
+   КАМЕРА
+===================================================== */
+
+function updateCamera() {
+
+    camera.x =
+        player.x-W/2;
+
+    camera.y =
+        player.y-H/2;
+
+    camera.x =
+        Math.max(
+            0,
+            Math.min(
+                world.width-W,
+                camera.x
+            )
+        );
+
+    camera.y =
+        Math.max(
+            0,
+            Math.min(
+                world.height-H,
+                camera.y
+            )
+        );
+}
+
+
+/* =====================================================
+   ФОН
+===================================================== */
+
+function drawBackground() {
+
+    const gradient =
+        ctx.createRadialGradient(
+            W/2,
+            H/2,
+            0,
+            W/2,
+            H/2,
+            Math.max(W,H)
+        );
+
+    gradient.addColorStop(
+        0,
+        "#151126"
+    );
+
+    gradient.addColorStop(
+        .5,
+        "#080814"
+    );
+
+    gradient.addColorStop(
+        1,
+        "#02030a"
+    );
+
+    ctx.fillStyle = gradient;
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+}
+
+
+/* =====================================================
+   МИР
+===================================================== */
+
+function drawWorld() {
+
+    ctx.save();
+
+    ctx.translate(
+        -camera.x,
+        -camera.y
+    );
+
+    /* фон мира */
+
+    ctx.fillStyle = "#060711";
+
+    ctx.fillRect(
+        0,
+        0,
+        world.width,
+        world.height
+    );
+
+
+    /* звёзды фона */
+
+    for(const s of backgroundStars) {
+
+        ctx.globalAlpha =
+            s.alpha *
+            (.6+.4*Math.sin(
+                Date.now()/1000*s.speed+s.x
+            ));
+
+        ctx.fillStyle = "#ffffff";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            s.x,
+            s.y,
+            s.size,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+
+
+    /* туман */
+
+    for(let i=0;i<8;i++) {
+
+        const x =
+            300+i*320;
+
+        const y =
+            500+
+            Math.sin(i)*400;
+
+        const g =
+            ctx.createRadialGradient(
+                x,
+                y,
+                0,
+                x,
+                y,
+                300
+            );
+
+        g.addColorStop(
+            0,
+            "rgba(90,50,160,.08)"
+        );
+
+        g.addColorStop(
+            1,
+            "rgba(0,0,0,0)"
+        );
+
+        ctx.fillStyle = g;
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            300,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+    }
+
+
+    /* звёзды */
+
+    for(const star of stars) {
+
+        if(star.collected) continue;
+
+        const pulse =
+            1+
+            Math.sin(
+                Date.now()/300+
+                star.x
+            )*.12;
+
+        const glow =
+            ctx.createRadialGradient(
+                star.x,
+                star.y,
+                0,
+                star.x,
+                star.y,
+                75*pulse
+            );
+
+        glow.addColorStop(
+            0,
+            "rgba(255,255,255,.9)"
+        );
+
+        glow.addColorStop(
+            .15,
+            "rgba(210,160,255,.6)"
+        );
+
+        glow.addColorStop(
+            .5,
+            "rgba(140,70,255,.2)"
+        );
+
+        glow.addColorStop(
+            1,
+            "rgba(100,30,255,0)"
+        );
+
+        ctx.fillStyle = glow;
+
+        ctx.beginPath();
+
+        ctx.arc(
+            star.x,
+            star.y,
+            75*pulse,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+
+
+        drawStar(
+            star.x,
+            star.y,
+            17*pulse
+        );
+    }
+
+
+    /* частицы */
+
+    for(const p of particles) {
+
+        ctx.globalAlpha =
+            Math.max(
+                0,
+                p.life/80
+            );
+
+        ctx.fillStyle =
+            "#d7a4ff";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            p.x,
+            p.y,
+            p.size,
+            0,
+            Math.PI*2
+        );
+
+        ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+
+
+    /* игрок */
+
+    const playerGlow =
+        ctx.createRadialGradient(
+            player.x,
+            player.y,
+            0,
+            player.x,
+            player.y,
+            90
+        );
+
+    playerGlow.addColorStop(
+        0,
+        "rgba(255,255,255,.35)"
+    );
+
+    playerGlow.addColorStop(
+        1,
+        "rgba(150,70,255,0)"
+    );
+
+    ctx.fillStyle =
+        playerGlow;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        player.x,
+        player.y,
+        90,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+
+    ctx.fillStyle =
+        "#ffffff";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        player.x,
+        player.y,
+        player.radius,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+
+    ctx.strokeStyle =
+        "rgba(210,150,255,.8)";
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        player.x,
+        player.y,
+        25,
+        0,
+        Math.PI*2
+    );
+
+    ctx.stroke();
+
+
+    ctx.restore();
+}
+
+
+/* =====================================================
+   ЗВЕЗДА
+===================================================== */
+
+function drawStar(x,y,r) {
+
+    ctx.save();
+
+    ctx.translate(x,y);
+
+    ctx.rotate(
+        Math.PI/2
+    );
+
+    ctx.beginPath();
+
+    for(let i=0;i<10;i++) {
+
+        const radius =
+            i%2===0
+            ? r
+            : r*.42;
+
+        const angle =
+            i*Math.PI/5;
+
+        const px =
+            Math.cos(angle)*radius;
+
+        const py =
+            Math.sin(angle)*radius;
+
+        if(i===0)
+            ctx.moveTo(px,py);
+        else
+            ctx.lineTo(px,py);
+    }
+
+    ctx.closePath();
+
+    ctx.fillStyle =
+        "#ffffff";
+
+    ctx.shadowBlur = 25;
+    ctx.shadowColor =
+        "#c77dff";
+
+    ctx.fill();
+
+    ctx.restore();
+}
+
+
+/* =====================================================
+   ТЕМНОТА
+===================================================== */
+
+function drawDarkness() {
+
+    const px =
+        player.x-camera.x;
+
+    const py =
+        player.y-camera.y;
+
+    const light =
+        ctx.createRadialGradient(
+            px,
+            py,
+            70,
+            px,
+            py,
+            Math.min(
+                360,
+                Math.max(W,H)*.65
+            )
+        );
+
+    light.addColorStop(
+        0,
+        "rgba(0,0,0,0)"
+    );
+
+    light.addColorStop(
+        .35,
+        "rgba(0,0,0,.05)"
+    );
+
+    light.addColorStop(
+        .75,
+        "rgba(0,0,0,.48)"
+    );
+
+    light.addColorStop(
+        1,
+        "rgba(0,0,0,.92)"
+    );
+
+    ctx.fillStyle =
+        light;
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+}
+
+
+/* =====================================================
+   ФИНАЛ
+===================================================== */
+
+let finished = false;
+
+function finish() {
+
+    if(finished) return;
+
+    finished = true;
+
+    /*
+       Создаём огромный взрыв
+       из всех найденных звёзд.
+    */
+
+    for(let i=0;i<300;i++) {
+
+        particle(
+            player.x,
+            player.y,
+            1
+        );
+    }
+
+    /*
+       Небольшая пауза,
+       потом финальный экран.
+    */
+
+    setTimeout(() => {
+
+        document
+            .getElementById("final")
+            .classList.add("show");
+
+    },2200);
+}
+
+
+/* =====================================================
+   ОСНОВНОЙ ЦИКЛ
+===================================================== */
+
+function loop() {
+
+    if(!finished) {
+
+        movePlayer();
+
+        checkStars();
+
+        updateCamera();
+    }
+
+    updateParticles();
+
+    drawBackground();
+
+    drawWorld();
+
+    if(!finished) {
+        drawDarkness();
+    }
+
+    requestAnimationFrame(loop);
+}
+
+loop();
+
+</script>
+
+</body>
+</html>
